@@ -64,13 +64,19 @@ void CMysqlConnection::BindInt(int Idx, int Value)
 {
 }
 
-void CMysqlConnection::Execute()
-{
-}
-
 bool CMysqlConnection::Step()
 {
 	return false;
+}
+
+bool CMysqlConnection::IsNull(int Col) const
+{
+	return false;
+}
+
+float CMysqlConnection::GetFloat(int Col) const
+{
+	return 0.0;
 }
 
 int CMysqlConnection::GetInt(int Col) const

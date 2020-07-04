@@ -18,7 +18,6 @@
 #include "player.h"
 #include "teehistorian.h"
 
-#include "score.h"
 #ifdef _MSC_VER
 typedef __int32 int32_t;
 typedef unsigned __int32 uint32_t;
@@ -54,6 +53,7 @@ enum
 	NUM_TUNEZONES = 256
 };
 
+class CScore;
 class IConsole;
 class IEngine;
 class IStorage;
@@ -276,7 +276,7 @@ public:
 private:
 
 	bool m_VoteWillPass;
-	class IScore *m_pScore;
+	class CScore *m_pScore;
 
 	//DDRace Console Commands
 
@@ -409,7 +409,7 @@ private:
 
 public:
 	CLayers *Layers() { return &m_Layers; }
-	class IScore *Score() { return m_pScore; }
+	class CScore *Score() { return m_pScore; }
 	bool m_VoteKick;
 	bool m_VoteSpec;
 	int m_VoteVictim;

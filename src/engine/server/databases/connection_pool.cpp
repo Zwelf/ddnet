@@ -27,13 +27,15 @@ void CDbConnectionPool::RegisterDatabase(std::unique_ptr<IDbConnection> pDatabas
 
 void CDbConnectionPool::Execute(
 		bool (*pFuncPtr) (IDbConnection *, const ISqlData *),
-		std::unique_ptr<ISqlData> pSqlRequestData)
+		std::unique_ptr<ISqlData> pSqlRequestData,
+		const char *pName)
 {
 }
 
 void CDbConnectionPool::ExecuteWrite(
-		bool (*pFuncPtr) (IDbConnection *, const ISqlData *),
-		std::unique_ptr<ISqlData> pSqlRequestData)
+		bool (*pFuncPtr) (IDbConnection *, const ISqlData *, bool),
+		std::unique_ptr<ISqlData> pSqlRequestData,
+		const char *pName)
 {
 }
 

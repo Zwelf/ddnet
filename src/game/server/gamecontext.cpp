@@ -24,10 +24,6 @@
 
 #include "gamemodes/DDRace.h"
 #include "score.h"
-#include "score/file_score.h"
-#if defined(CONF_SQL)
-#include "score/sql_score.h"
-#endif
 
 enum
 {
@@ -3066,17 +3062,12 @@ void CGameContext::OnInit(/*class IKernel *pKernel*/)
 		}
 	}
 
-	// delete old score object
-	if(m_pScore)
-		delete m_pScore;
+	if(!m_pScore)
+	{
+		// TODO: create this in CServer
+		m_pScore = new CScore(this);
+	}
 
-	// create score object (add sql later)
-#if defined(CONF_SQL)
-	if(g_Config.m_SvUseSQL)
-		m_pScore = new CSqlScore(this);
-	else
-#endif
-		m_pScore = new CFileScore(this);
 	// setup core world
 	//for(int i = 0; i < MAX_CLIENTS; i++)
 	//	game.players[i].core.world = &game.world.core;

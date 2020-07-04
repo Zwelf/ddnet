@@ -1,15 +1,15 @@
 #ifndef ENGINE_SERVER_DATABASES_CONNECTION_POOL_H
 #define ENGINE_SERVER_DATABASES_CONNECTION_POOL_H
 
+#include "connection.h"
+
 #include <base/tl/threading.h>
 #include <memory>
 #include <vector>
 
-class IDbConnection;
-
 struct ISqlData
 {
-	virtual ~ISqlData();
+	virtual ~ISqlData() {};
 };
 
 class CDbConnectionPool
@@ -30,11 +30,13 @@ public:
 
 	void Execute(
 			bool (*pFuncPtr) (IDbConnection *, const ISqlData *),
-			std::unique_ptr<ISqlData> pSqlRequestData);
+			std::unique_ptr<ISqlData> pSqlRequestData,
+			const char *pName);
 	// writes to WRITE_BACKUP server in case of failure
 	void ExecuteWrite(
-			bool (*pFuncPtr) (IDbConnection *, const ISqlData *),
-			std::unique_ptr<ISqlData> pSqlRequestData);
+			bool (*pFuncPtr) (IDbConnection *, const ISqlData *, bool),
+			std::unique_ptr<ISqlData> pSqlRequestData,
+			const char *pName);
 
 	void Shutdown();
 

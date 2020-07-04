@@ -39,10 +39,10 @@ public:
 	virtual void BindString(int Idx, const char *pString);
 	virtual void BindInt(int Idx, int Value);
 
-	virtual void Execute();
-
 	virtual bool Step();
 
+	virtual bool IsNull(int Col) const;
+	virtual float GetFloat(int Col) const;
 	virtual int GetInt(int Col) const;
 	virtual void GetString(int Col, char *pBuffer, int BufferSize) const;
 	virtual int GetBlob(int Col, unsigned char *pBuffer, int BufferSize) const;

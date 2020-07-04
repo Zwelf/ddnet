@@ -41,11 +41,12 @@ public:
 	virtual void BindString(int Idx, const char *pString) = 0;
 	virtual void BindInt(int Idx, int Value) = 0;
 
-	virtual void Execute() = 0;
-
-	// if true if another result row exists and selects it
+	// executes the query and returns if a result row exists and selects it
+	// when called multiple times the next row is selected
 	virtual bool Step() = 0;
 
+	virtual bool IsNull(int Col) const = 0;
+	virtual float GetFloat(int Col) const = 0;
 	virtual int GetInt(int Col) const = 0;
 	// ensures that the string is null terminated
 	virtual void GetString(int Col, char *pBuffer, int BufferSize) const = 0;
