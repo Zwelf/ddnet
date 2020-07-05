@@ -5,6 +5,7 @@
 
 #include <base/system.h>
 #include <engine/server/databases/connection.h>
+#include <engine/server/databases/connection_pool.h>
 #include <engine/server/sql_string_helpers.h>
 #include <engine/shared/config.h>
 #include <engine/shared/console.h>
@@ -75,7 +76,7 @@ void CScore::ExecPlayerThread(
 	str_copy(Tmp->m_RequestingPlayer, Server()->ClientName(ClientID), sizeof(Tmp->m_RequestingPlayer));
 	Tmp->m_Offset = Offset;
 
-	m_Pool.Execute(pFuncPtr, std::move(Tmp), pThreadName);
+	m_pPool->Execute(pFuncPtr, std::move(Tmp), pThreadName);
 }
 
 bool CScore::RateLimitPlayer(int ClientID)
@@ -101,12 +102,8 @@ void CScore::GeneratePassphrase(char *pBuf, int BufSize)
 	}
 }
 
-void CScore::OnShutdown()
-{
-	m_Pool.Shutdown();
-}
-
-CScore::CScore(CGameContext *pGameServer) :
+CScore::CScore(CGameContext *pGameServer, CDbConnectionPool *pPool) :
+		m_pPool(pPool),
 		m_pGameServer(pGameServer),
 		m_pServer(pGameServer->Server())
 {
@@ -142,7 +139,7 @@ CScore::CScore(CGameContext *pGameServer) :
 		Server()->SetErrorShutdown("sql too few words in wordlist");
 		return;
 	}
-	m_Pool.Execute(Init, std::move(Tmp), "load best time");
+	m_pPool->Execute(Init, std::move(Tmp), "load best time");
 }
 
 bool CScore::Init(IDbConnection *pSqlServer, const ISqlData *pGameData)
@@ -178,9 +175,11 @@ bool CScore::LoadPlayerDataThread(IDbConnection *pSqlServer, const ISqlData *pGa
 	char aBuf[512];
 	// get best race time
 	str_format(aBuf, sizeof(aBuf),
-			"SELECT * "
+			"SELECT Time, cp1, cp2, cp3, cp4, cp5, cp6, cp7, cp8, cp9, cp10, "
+				"cp11, cp12, cp13, cp14, cp15, cp16, cp17, cp18, cp19, cp20, "
+				"cp21, cp22, cp23, cp24, cp25 "
 			"FROM %s_race "
-			"WHERE Map=? AND Name=? "
+			"WHERE Map = ? AND Name = ? "
 			"ORDER BY Time ASC "
 			"LIMIT 1;",
 			pSqlServer->GetPrefix());
@@ -200,7 +199,7 @@ bool CScore::LoadPlayerDataThread(IDbConnection *pSqlServer, const ISqlData *pGa
 		{
 			for(int i = 0; i < NUM_CHECKPOINTS; i++)
 			{
-				pData->m_pResult->m_Data.m_Info.m_CpTime[i] = pSqlServer->GetFloat(i+6);
+				pData->m_pResult->m_Data.m_Info.m_CpTime[i] = pSqlServer->GetFloat(i+2);
 			}
 		}
 	}
@@ -245,14 +244,14 @@ bool CScore::MapVoteThread(IDbConnection *pSqlServer, const ISqlData *pGameData)
 	sqlstr::FuzzyString(aFuzzyMap, sizeof(aFuzzyMap));
 
 	char aMapPrefix[128];
-	str_copy(aFuzzyMap, pData->m_Name, sizeof(aFuzzyMap));
+	str_copy(aMapPrefix, pData->m_Name, sizeof(aMapPrefix));
 	str_append(aMapPrefix, "%", sizeof(aMapPrefix));
 
 	char aBuf[768];
 	str_format(aBuf, sizeof(aBuf),
 			"SELECT Map, Server "
 			"FROM %s_maps "
-			"WHERE Map LIKE ? COLLATE utf8mb4_general_ci "
+			"WHERE Map LIKE convert(? using utf8mb4) COLLATE utf8mb4_general_ci "
 			"ORDER BY "
 				"CASE WHEN Map = ? THEN 0 ELSE 1 END, "
 				"CASE WHEN Map LIKE ? THEN 0 ELSE 1 END, "
@@ -304,7 +303,7 @@ bool CScore::MapInfoThread(IDbConnection *pSqlServer, const ISqlData *pGameData)
 	sqlstr::FuzzyString(aFuzzyMap, sizeof(aFuzzyMap));
 
 	char aMapPrefix[128];
-	str_copy(aFuzzyMap, pData->m_Name, sizeof(aFuzzyMap));
+	str_copy(aMapPrefix, pData->m_Name, sizeof(aMapPrefix));
 	str_append(aMapPrefix, "%", sizeof(aMapPrefix));
 
 	char aBuf[1024];
@@ -318,7 +317,7 @@ bool CScore::MapInfoThread(IDbConnection *pSqlServer, const ISqlData *pGameData)
 				"(SELECT MIN(Time) FROM %s_race WHERE Map = l.Map AND Name = ?) AS OwnTime "
 			"FROM ("
 				"SELECT * FROM %s_maps "
-				"WHERE Map LIKE ? COLLATE utf8mb4_general_ci "
+				"WHERE Map LIKE convert(? using utf8mb4) COLLATE utf8mb4_general_ci "
 				"ORDER BY "
 					"CASE WHEN Map = ? THEN 0 ELSE 1 END, "
 					"CASE WHEN Map LIKE ? THEN 0 ELSE 1 END, "
@@ -426,7 +425,7 @@ void CScore::SaveScore(int ClientID, float Time, const char *pTimestamp, float C
 	for(int i = 0; i < NUM_CHECKPOINTS; i++)
 		Tmp->m_aCpCurrent[i] = CpTime[i];
 
-	m_Pool.ExecuteWrite(SaveScoreThread, std::move(Tmp), "save score");
+	m_pPool->ExecuteWrite(SaveScoreThread, std::move(Tmp), "save score");
 }
 
 bool CScore::SaveScoreThread(IDbConnection *pSqlServer, const ISqlData *pGameData, bool Failure)
@@ -478,7 +477,7 @@ bool CScore::SaveScoreThread(IDbConnection *pSqlServer, const ISqlData *pGameDat
 				"cp1, cp2, cp3, cp4, cp5, cp6, cp7, cp8, cp9, cp10, cp11, cp12, cp13, "
 				"cp14, cp15, cp16, cp17, cp18, cp19, cp20, cp21, cp22, cp23, cp24, cp25, "
 				"GameID, DDNet7) "
-			"VALUES (?, ?, ? '%.2f', ?, "
+			"VALUES (?, ?, ?, '%.2f', ?, "
 				"'%.2f', '%.2f', '%.2f', '%.2f', '%.2f', '%.2f', '%.2f', '%.2f', '%.2f', "
 				"'%.2f', '%.2f', '%.2f', '%.2f', '%.2f', '%.2f', '%.2f', '%.2f', '%.2f', "
 				"'%.2f', '%.2f', '%.2f', '%.2f', '%.2f', '%.2f', '%.2f', "
@@ -522,7 +521,7 @@ void CScore::SaveTeamScore(int* aClientIDs, unsigned int Size, float Time, const
 	FormatUuid(GameServer()->GameUuid(), Tmp->m_GameUuid, sizeof(Tmp->m_GameUuid));
 	str_copy(Tmp->m_Map, g_Config.m_SvMap, sizeof(Tmp->m_Map));
 
-	m_Pool.ExecuteWrite(SaveTeamScoreThread, std::move(Tmp), "save team score");
+	m_pPool->ExecuteWrite(SaveTeamScoreThread, std::move(Tmp), "save team score");
 }
 
 bool CScore::SaveTeamScoreThread(IDbConnection *pSqlServer, const ISqlData *pGameData, bool Failure)
@@ -822,7 +821,7 @@ bool CScore::ShowTeamTop5Thread(IDbConnection *pSqlServer, const ISqlData *pGame
 	str_format(aBuf, sizeof(aBuf),
 			"SELECT Name, Time, Rank, TeamSize "
 			"FROM (" // limit to 5
-				"SELECT TeamSize, Rank, ID, "
+				"SELECT TeamSize, Rank, ID "
 				"FROM (" // teamrank score board
 					"SELECT RANK() OVER w AS Rank, ID, COUNT(*) AS Teamsize "
 					"FROM %s_teamrace "
@@ -924,7 +923,7 @@ bool CScore::ShowTimesThread(IDbConnection *pSqlServer, const ISqlData *pGameDat
 				"SELECT Time, "
 					"UNIX_TIMESTAMP(CURRENT_TIMESTAMP)-UNIX_TIMESTAMP(Timestamp) as Ago, "
 					"UNIX_TIMESTAMP(Timestamp) as Stamp, "
-					"Name"
+					"Name "
 				"FROM %s_race "
 				"WHERE Map = ? "
 				"ORDER BY Timestamp %s "
@@ -1097,7 +1096,7 @@ void CScore::RandomMap(int ClientID, int Stars)
 	str_copy(Tmp->m_ServerType, g_Config.m_SvServerType, sizeof(Tmp->m_ServerType));
 	str_copy(Tmp->m_RequestingPlayer, GameServer()->Server()->ClientName(ClientID), sizeof(Tmp->m_RequestingPlayer));
 
-	m_Pool.Execute(RandomMapThread, std::move(Tmp), "random map");
+	m_pPool->Execute(RandomMapThread, std::move(Tmp), "random map");
 }
 
 bool CScore::RandomMapThread(IDbConnection *pSqlServer, const ISqlData *pGameData)
@@ -1151,7 +1150,7 @@ void CScore::RandomUnfinishedMap(int ClientID, int Stars)
 	str_copy(Tmp->m_ServerType, g_Config.m_SvServerType, sizeof(Tmp->m_ServerType));
 	str_copy(Tmp->m_RequestingPlayer, GameServer()->Server()->ClientName(ClientID), sizeof(Tmp->m_RequestingPlayer));
 
-	m_Pool.Execute(RandomUnfinishedMapThread, std::move(Tmp), "random unfinished map");
+	m_pPool->Execute(RandomUnfinishedMapThread, std::move(Tmp), "random unfinished map");
 }
 
 bool CScore::RandomUnfinishedMapThread(IDbConnection *pSqlServer, const ISqlData *pGameData)
@@ -1233,7 +1232,7 @@ void CScore::SaveTeam(int ClientID, const char* Code, const char* Server)
 	GeneratePassphrase(Tmp->m_aGeneratedCode, sizeof(Tmp->m_aGeneratedCode));
 
 	pController->m_Teams.KillSavedTeam(ClientID, Team);
-	m_Pool.ExecuteWrite(SaveTeamThread, std::move(Tmp), "save team");
+	m_pPool->ExecuteWrite(SaveTeamThread, std::move(Tmp), "save team");
 }
 
 bool CScore::SaveTeamThread(IDbConnection *pSqlServer, const ISqlData *pGameData, bool Failure)
@@ -1342,7 +1341,7 @@ void CScore::LoadTeam(const char* Code, int ClientID)
 	int Team = pController->m_Teams.m_Core.Team(ClientID);
 	if(pController->m_Teams.GetSaving(Team))
 		return;
-	if(Team <= 0 || Team >= MAX_CLIENTS)
+	if(Team <= 0 || Team >= MAX_CLIENTS || (g_Config.m_SvTeam != 3 && Team == TEAM_FLOCK))
 	{
 		GameServer()->SendChatTarget(ClientID, "You have to be in a team (from 1-63)");
 		return;
@@ -1353,6 +1352,7 @@ void CScore::LoadTeam(const char* Code, int ClientID)
 		return;
 	}
 	auto SaveResult = std::make_shared<CScoreSaveResult>(ClientID, pController);
+	SaveResult->m_Status = CScoreSaveResult::LOAD_FAILED;
 	pController->m_Teams.SetSaving(Team, SaveResult);
 	auto Tmp = std::unique_ptr<CSqlTeamLoad>(new CSqlTeamLoad(SaveResult));
 	str_copy(Tmp->m_Code, Code, sizeof(Tmp->m_Code));
@@ -1370,7 +1370,7 @@ void CScore::LoadTeam(const char* Code, int ClientID)
 			Tmp->m_NumPlayer++;
 		}
 	}
-	m_Pool.Execute(LoadTeamThread, std::move(Tmp), "load team");
+	m_pPool->Execute(LoadTeamThread, std::move(Tmp), "load team");
 }
 
 bool CScore::LoadTeamThread(IDbConnection *pSqlServer, const ISqlData *pGameData)

@@ -12,6 +12,7 @@ public:
 		str_copy(m_aPrefix, pPrefix, sizeof(m_aPrefix));
 	}
 	virtual ~IDbConnection() {}
+	IDbConnection& operator=(const IDbConnection&) = delete;
 
 	// copies the credentials, not the active connection
 	virtual IDbConnection *Copy() = 0;

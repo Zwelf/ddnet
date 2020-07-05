@@ -102,24 +102,20 @@ class CServer : public IServer
 	CUPnP m_UPnP;
 #endif
 
-#if defined(CONF_SQL)
-	lock m_GlobalSqlLock;
-
-	CSqlServer *m_apSqlReadServers[MAX_SQLSERVERS];
-	CSqlServer *m_apSqlWriteServers[MAX_SQLSERVERS];
-#endif
-
 #if defined(CONF_FAMILY_UNIX)
 	UNIXSOCKETADDR m_ConnLoggingDestAddr;
 	bool m_ConnLoggingSocketCreated;
 	UNIXSOCKET m_ConnLoggingSocket;
 #endif
 
+	class CDbConnectionPool *m_pConnectionPool;
+
 public:
 	class IGameServer *GameServer() { return m_pGameServer; }
 	class IConsole *Console() { return m_pConsole; }
 	class IStorage *Storage() { return m_pStorage; }
 	class IEngineAntibot *Antibot() { return m_pAntibot; }
+	class CDbConnectionPool *DbPool() { return m_pConnectionPool; }
 
 	enum
 	{

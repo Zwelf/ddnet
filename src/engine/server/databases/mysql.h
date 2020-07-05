@@ -2,16 +2,14 @@
 #define ENGINE_SERVER_DATABASES_MYSQL_H
 
 #include "connection.h"
+#include <base/tl/threading.h>
+
 #include <atomic>
 #include <memory>
 
 #include <cppconn/exception.h>
 #include <cppconn/prepared_statement.h>
 #include <cppconn/statement.h>
-
-namespace sql {
-class Driver;
-} /* namespace sql */
 
 class CMysqlConnection : public IDbConnection
 {
@@ -49,9 +47,9 @@ public:
 
 private:
 	std::unique_ptr<sql::Connection> m_pConnection;
-	sql::Driver *m_pDriver;
 	std::unique_ptr<sql::PreparedStatement> m_pPreparedStmt;
 	std::unique_ptr<sql::ResultSet> m_pResults;
+	bool m_NewQuery;
 
 	// copy of config vars
 	char m_aDatabase[64];
@@ -62,6 +60,8 @@ private:
 	bool m_Setup;
 
 	std::atomic_bool m_InUse;
+
+	static lock m_SqlDriverLock;
 };
 
 #endif // ENGINE_SERVER_DATABASES_MYSQL_H

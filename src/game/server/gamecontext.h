@@ -225,7 +225,7 @@ public:
 	virtual void OnInit();
 	virtual void OnConsoleInit();
 	virtual void OnMapChange(char *pNewMapName, int MapNameSize);
-	virtual void OnShutdown(bool FullShutdown = false);
+	virtual void OnShutdown();
 
 	virtual void OnTick();
 	virtual void OnPreSnap();

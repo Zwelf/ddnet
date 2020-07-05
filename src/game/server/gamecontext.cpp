@@ -3064,8 +3064,7 @@ void CGameContext::OnInit(/*class IKernel *pKernel*/)
 
 	if(!m_pScore)
 	{
-		// TODO: create this in CServer
-		m_pScore = new CScore(this);
+		m_pScore = new CScore(this, ((CServer *)Server())->DbPool());
 	}
 
 	// setup core world
@@ -3317,11 +3316,8 @@ void CGameContext::OnMapChange(char *pNewMapName, int MapNameSize)
 	str_copy(m_aDeleteTempfile, aTemp, sizeof(m_aDeleteTempfile));
 }
 
-void CGameContext::OnShutdown(bool FullShutdown)
+void CGameContext::OnShutdown()
 {
-	if (FullShutdown)
-		Score()->OnShutdown();
-
 	Antibot()->RoundEnd();
 
 	if(m_TeeHistorianActive)

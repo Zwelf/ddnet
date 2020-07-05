@@ -249,7 +249,7 @@ struct CSqlTeamLoad : ISqlData
 class CScore
 {
 	CPlayerData m_aPlayerData[MAX_CLIENTS];
-	CDbConnectionPool m_Pool;
+	CDbConnectionPool *m_pPool;
 
 	static bool Init(IDbConnection *pSqlServer, const ISqlData *pGameData);
 
@@ -297,11 +297,8 @@ class CScore
 	bool RateLimitPlayer(int ClientID);
 
 public:
-	CScore(CGameContext *pGameServer);
+	CScore(CGameContext *pGameServer, CDbConnectionPool *pPool);
 	~CScore() {}
-
-	// called when the server is shut down but not on mapchange/reload
-	void OnShutdown();
 
 	CPlayerData *PlayerData(int ID) { return &m_aPlayerData[ID]; }
 
