@@ -1,6 +1,7 @@
 #include "mysql.h"
 
 #include <cppconn/driver.h>
+#include <engine/shared/protocol.h>
 
 lock CMysqlConnection::m_SqlDriverLock;
 
@@ -16,7 +17,8 @@ CMysqlConnection::CMysqlConnection(
 	m_NewQuery(false),
 	m_Port(Port),
 	m_Setup(Setup),
-	m_InUse(false)
+	m_InUse(false),
+	m_Locked(false)
 {
 	str_copy(m_aDatabase, pDatabase, sizeof(m_aDatabase));
 	str_copy(m_aUser, pUser, sizeof(m_aUser));
@@ -64,7 +66,7 @@ IDbConnection::Status CMysqlConnection::Connect()
 			dbg_msg("sql", "Unknown Error cause by the MySQL/C++ Connector");
 		}
 
-		m_InUse = false;
+		m_InUse.store(false);
 		dbg_msg("sql", "ERROR: SQL connection failed");
 		return Status::ERROR;
 	}
@@ -94,21 +96,37 @@ IDbConnection::Status CMysqlConnection::Connect()
 			m_pConnection.reset(pDriver->connect(connection_properties));
 		}
 
+		// Create Statement
+		m_pStmt = std::unique_ptr<sql::Statement>(m_pConnection->createStatement());
+
 		// Apparently OPT_CHARSET_NAME and OPT_SET_CHARSET_NAME are not enough
-		PrepareStatement("SET CHARACTER SET utf8mb4;");
-		Step();
+		m_pStmt->execute("SET CHARACTER SET utf8mb4;");
 
 		if(m_Setup)
 		{
-			char aBuf[128];
+			char aBuf[1024];
 			// create database
 			str_format(aBuf, sizeof(aBuf), "CREATE DATABASE IF NOT EXISTS %s CHARACTER SET utf8mb4", m_aDatabase);
 			PrepareStatement(aBuf);
-			Step();
+			// Connect to specific database
+			m_pConnection->setSchema(m_aDatabase);
+			str_format(aBuf, sizeof(aBuf), m_pCreateRace, GetPrefix(), MAX_NAME_LENGTH);
+			m_pStmt->execute(aBuf);
+			str_format(aBuf, sizeof(aBuf), m_pCreateTeamrace, GetPrefix(), MAX_NAME_LENGTH);
+			m_pStmt->execute(aBuf);
+			str_format(aBuf, sizeof(aBuf), m_pCreateMaps, GetPrefix());
+			m_pStmt->execute(aBuf);
+			str_format(aBuf, sizeof(aBuf), m_pCreateSaves, GetPrefix());
+			m_pStmt->execute(aBuf);
+			str_format(aBuf, sizeof(aBuf), m_pCreatePoints, GetPrefix(), MAX_NAME_LENGTH);
+			m_pStmt->execute(aBuf);
+			m_Setup = false;
 		}
-
-		// Connect to specific database
-		m_pConnection->setSchema(m_aDatabase);
+		else
+		{
+			// Connect to specific database
+			m_pConnection->setSchema(m_aDatabase);
+		}
 		dbg_msg("sql", "sql connection established");
 		return Status::SUCCESS;
 	}
@@ -138,12 +156,21 @@ void CMysqlConnection::Disconnect()
 	m_InUse.store(false);
 }
 
-void CMysqlConnection::Lock()
+void CMysqlConnection::Lock(const char *pTable)
 {
+	char aBuf[512];
+	str_format(aBuf, sizeof(aBuf), "lock tables %s write;", pTable);
+	m_pStmt->execute(aBuf);
+	m_Locked = true;
 }
 
 void CMysqlConnection::Unlock()
 {
+	if(m_Locked)
+	{
+		m_pStmt->execute("unlock tables;");
+		m_Locked = false;
+	}
 }
 
 void CMysqlConnection::PrepareStatement(const char *pStmt)

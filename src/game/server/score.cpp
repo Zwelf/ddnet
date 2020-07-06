@@ -477,10 +477,10 @@ bool CScore::SaveScoreThread(IDbConnection *pSqlServer, const ISqlData *pGameDat
 				"cp1, cp2, cp3, cp4, cp5, cp6, cp7, cp8, cp9, cp10, cp11, cp12, cp13, "
 				"cp14, cp15, cp16, cp17, cp18, cp19, cp20, cp21, cp22, cp23, cp24, cp25, "
 				"GameID, DDNet7) "
-			"VALUES (?, ?, ?, '%.2f', ?, "
-				"'%.2f', '%.2f', '%.2f', '%.2f', '%.2f', '%.2f', '%.2f', '%.2f', '%.2f', "
-				"'%.2f', '%.2f', '%.2f', '%.2f', '%.2f', '%.2f', '%.2f', '%.2f', '%.2f', "
-				"'%.2f', '%.2f', '%.2f', '%.2f', '%.2f', '%.2f', '%.2f', "
+			"VALUES (?, ?, ?, %.2f, ?, "
+				"%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, "
+				"%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, "
+				"%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, "
 				"'%s', false);",
 			pSqlServer->GetPrefix(), pData->m_Time,
 			pData->m_aCpCurrent[0], pData->m_aCpCurrent[1], pData->m_aCpCurrent[2],
@@ -497,6 +497,7 @@ bool CScore::SaveScoreThread(IDbConnection *pSqlServer, const ISqlData *pGameDat
 	pSqlServer->BindString(2, pData->m_Name);
 	pSqlServer->BindString(3, pData->m_aTimestamp);
 	pSqlServer->BindString(4, g_Config.m_SvSqlServerName);
+	pSqlServer->Step();
 
 	pData->m_pResult->m_Done = true;
 	return true;
@@ -568,12 +569,12 @@ bool CScore::SaveTeamScoreThread(IDbConnection *pSqlServer, const ISqlData *pGam
 		if(pData->m_Time < Time)
 		{
 			str_format(aBuf, sizeof(aBuf),
-					"UPDATE %s_teamrace SET Time='%.2f', Timestamp=?, DDNet7=false, GameID=? WHERE ID = ?;",
+					"UPDATE %s_teamrace SET Time=%.2f, Timestamp=?, DDNet7=false, GameID=? WHERE ID = ?;",
 					pSqlServer->GetPrefix(), pData->m_Time);
 			pSqlServer->PrepareStatement(aBuf);
 			pSqlServer->BindString(1, pData->m_aTimestamp);
-			pSqlServer->BindString(1, pData->m_GameUuid);
-			pSqlServer->BindString(1, aGameID);
+			pSqlServer->BindString(2, pData->m_GameUuid);
+			pSqlServer->BindString(3, aGameID);
 			pSqlServer->Step();
 		}
 	}
@@ -588,14 +589,14 @@ bool CScore::SaveTeamScoreThread(IDbConnection *pSqlServer, const ISqlData *pGam
 			// if no entry found... create a new one
 			str_format(aBuf, sizeof(aBuf),
 					"INSERT IGNORE INTO %s_teamrace(Map, Name, Timestamp, Time, ID, GameID, DDNet7) "
-					"VALUES (?, ?, ?, '%.2f', ?, ?, false);",
+					"VALUES (?, ?, ?, %.2f, ?, ?, false);",
 					pSqlServer->GetPrefix(), pData->m_Time);
 			pSqlServer->PrepareStatement(aBuf);
 			pSqlServer->BindString(1, pData->m_Map);
-			pSqlServer->BindString(1, pData->m_aNames[i]);
-			pSqlServer->BindString(1, pData->m_aTimestamp);
-			pSqlServer->BindString(1, aGameID);
-			pSqlServer->BindString(1, pData->m_GameUuid);
+			pSqlServer->BindString(2, pData->m_aNames[i]);
+			pSqlServer->BindString(3, pData->m_aTimestamp);
+			pSqlServer->BindString(4, aGameID);
+			pSqlServer->BindString(5, pData->m_GameUuid);
 			pSqlServer->Step();
 		}
 	}
@@ -706,7 +707,7 @@ bool CScore::ShowTeamRankThread(IDbConnection *pSqlServer, const ISqlData *pGame
 		float Time = pSqlServer->GetFloat(3);
 		int Rank = pSqlServer->GetInt(4);
 
-		char aFormattedNames[512];
+		char aFormattedNames[512] = "";
 		int StrPos = 0;
 		for(int Name = 0; Name < NumNames; Name++)
 		{
@@ -721,6 +722,7 @@ bool CScore::ShowTeamRankThread(IDbConnection *pSqlServer, const ISqlData *pGame
 				str_append(aFormattedNames, ", ", sizeof(aFormattedNames));
 			else if (Name < NumNames - 1)
 				str_append(aFormattedNames, " & ", sizeof(aFormattedNames));
+			StrPos++;
 		}
 
 		if(g_Config.m_SvHideScore)
@@ -1244,7 +1246,10 @@ bool CScore::SaveTeamThread(IDbConnection *pSqlServer, const ISqlData *pGameData
 
 	char *pSaveState = pData->m_pResult->m_SavedTeam.GetString();
 	char aBuf[65536];
-	pSqlServer->Lock();
+
+	char aTable[512];
+	str_format(aTable, sizeof(aTable), "%s_saves", pSqlServer->GetPrefix());
+	pSqlServer->Lock(aTable);
 
 	char Code[128] = {0};
 	str_format(aBuf, sizeof(aBuf), "SELECT Savegame FROM %s_saves WHERE Code = ? AND Map = ?", pSqlServer->GetPrefix());
@@ -1341,7 +1346,7 @@ void CScore::LoadTeam(const char* Code, int ClientID)
 	int Team = pController->m_Teams.m_Core.Team(ClientID);
 	if(pController->m_Teams.GetSaving(Team))
 		return;
-	if(Team <= 0 || Team >= MAX_CLIENTS || (g_Config.m_SvTeam != 3 && Team == TEAM_FLOCK))
+	if(Team < TEAM_FLOCK || Team >= MAX_CLIENTS || (g_Config.m_SvTeam != 3 && Team == TEAM_FLOCK))
 	{
 		GameServer()->SendChatTarget(ClientID, "You have to be in a team (from 1-63)");
 		return;
@@ -1378,15 +1383,18 @@ bool CScore::LoadTeamThread(IDbConnection *pSqlServer, const ISqlData *pGameData
 	const CSqlTeamLoad *pData = dynamic_cast<const CSqlTeamLoad *>(pGameData);
 	pData->m_pResult->m_Status = CScoreSaveResult::LOAD_FAILED;
 
-	pSqlServer->Lock();
+	char aTable[512];
+	str_format(aTable, sizeof(aTable), "%s_saves", pSqlServer->GetPrefix());
+	pSqlServer->Lock(aTable);
 
 	{
 		char aSaveLike[128] = "";
-		str_append(aSaveLike, "%\\n", sizeof(aSaveLike));
+		str_append(aSaveLike, "%\n", sizeof(aSaveLike));
 		sqlstr::EscapeLike(aSaveLike + str_length(aSaveLike),
 				pData->m_RequestingPlayer,
 				sizeof(aSaveLike) - str_length(aSaveLike));
-		str_append(aSaveLike, "\\t%", sizeof(aSaveLike));
+		str_append(aSaveLike, "\t%", sizeof(aSaveLike));
+		printf("%s\n", aSaveLike);
 
 		char aBuf[512];
 		str_format(aBuf, sizeof(aBuf),
@@ -1467,8 +1475,6 @@ bool CScore::LoadTeamThread(IDbConnection *pSqlServer, const ISqlData *pGameData
 		strcpy(pData->m_pResult->m_aMessage, "Loading successfully done");
 	}
 end:
-	if(pData->m_pResult->m_Status != CScoreSaveResult::LOAD_SUCCESS)
-		strcpy(pData->m_pResult->m_aMessage, "Loading team failed");
 	pSqlServer->Unlock();
 	return true;
 }
@@ -1486,11 +1492,11 @@ bool CScore::GetSavesThread(IDbConnection *pSqlServer, const ISqlData *pGameData
 	auto paMessages = pData->m_pResult->m_Data.m_aaMessages;
 
 	char aSaveLike[128] = "";
-	str_append(aSaveLike, "%\\n", sizeof(aSaveLike));
+	str_append(aSaveLike, "%\n", sizeof(aSaveLike));
 	sqlstr::EscapeLike(aSaveLike + str_length(aSaveLike),
 			pData->m_RequestingPlayer,
 			sizeof(aSaveLike) - str_length(aSaveLike));
-	str_append(aSaveLike, "\\t%", sizeof(aSaveLike));
+	str_append(aSaveLike, "\t%", sizeof(aSaveLike));
 
 	char aBuf[512];
 	str_format(aBuf, sizeof(aBuf),

@@ -29,7 +29,7 @@ public:
 	virtual Status Connect();
 	virtual void Disconnect();
 
-	virtual void Lock();
+	virtual void Lock(const char *pTable);
 	virtual void Unlock();
 
 	virtual void PrepareStatement(const char *pStmt);
@@ -48,6 +48,7 @@ public:
 private:
 	std::unique_ptr<sql::Connection> m_pConnection;
 	std::unique_ptr<sql::PreparedStatement> m_pPreparedStmt;
+	std::unique_ptr<sql::Statement> m_pStmt;
 	std::unique_ptr<sql::ResultSet> m_pResults;
 	bool m_NewQuery;
 
@@ -60,8 +61,10 @@ private:
 	bool m_Setup;
 
 	std::atomic_bool m_InUse;
+	bool m_Locked;
 
 	static lock m_SqlDriverLock;
+
 };
 
 #endif // ENGINE_SERVER_DATABASES_MYSQL_H
