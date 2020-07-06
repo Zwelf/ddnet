@@ -7,9 +7,11 @@
 #include <atomic>
 #include <memory>
 
+#if defined(CONF_SQL)
 #include <cppconn/exception.h>
 #include <cppconn/prepared_statement.h>
 #include <cppconn/statement.h>
+#endif
 
 class CMysqlConnection : public IDbConnection
 {
@@ -46,10 +48,12 @@ public:
 	virtual int GetBlob(int Col, unsigned char *pBuffer, int BufferSize) const;
 
 private:
+#if defined(CONF_SQL)
 	std::unique_ptr<sql::Connection> m_pConnection;
 	std::unique_ptr<sql::PreparedStatement> m_pPreparedStmt;
 	std::unique_ptr<sql::Statement> m_pStmt;
 	std::unique_ptr<sql::ResultSet> m_pResults;
+#endif
 	bool m_NewQuery;
 
 	// copy of config vars
@@ -64,7 +68,6 @@ private:
 	bool m_Locked;
 
 	static lock m_SqlDriverLock;
-
 };
 
 #endif // ENGINE_SERVER_DATABASES_MYSQL_H

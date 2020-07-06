@@ -1,7 +1,9 @@
 #include "mysql.h"
 
+#if defined(CONF_SQL)
 #include <cppconn/driver.h>
 #include <engine/shared/protocol.h>
+#endif
 
 lock CMysqlConnection::m_SqlDriverLock;
 
@@ -24,6 +26,9 @@ CMysqlConnection::CMysqlConnection(
 	str_copy(m_aUser, pUser, sizeof(m_aUser));
 	str_copy(m_aPass, pPass, sizeof(m_aPass));
 	str_copy(m_aIp, pIp, sizeof(m_aIp));
+#if not defined(CONF_SQL)
+	dbg_msg("sql", "Adding MySQL server failed due to MySQL support not enabled during compile time");
+#endif
 }
 
 CMysqlConnection::~CMysqlConnection()
@@ -37,6 +42,7 @@ CMysqlConnection *CMysqlConnection::Copy()
 
 IDbConnection::Status CMysqlConnection::Connect()
 {
+#if defined(CONF_SQL)
 	if(m_InUse.exchange(true))
 		return Status::IN_USE;
 
@@ -107,7 +113,7 @@ IDbConnection::Status CMysqlConnection::Connect()
 			char aBuf[1024];
 			// create database
 			str_format(aBuf, sizeof(aBuf), "CREATE DATABASE IF NOT EXISTS %s CHARACTER SET utf8mb4", m_aDatabase);
-			PrepareStatement(aBuf);
+			m_pStmt->execute(aBuf);
 			// Connect to specific database
 			m_pConnection->setSchema(m_aDatabase);
 			str_format(aBuf, sizeof(aBuf), m_pCreateRace, GetPrefix(), MAX_NAME_LENGTH);
@@ -147,6 +153,7 @@ IDbConnection::Status CMysqlConnection::Connect()
 		dbg_msg("sql", "Unknown Error cause by the MySQL/C++ Connector");
 	}
 
+#endif
 	dbg_msg("sql", "ERROR: sql connection failed");
 	return Status::ERROR;
 }
@@ -158,73 +165,105 @@ void CMysqlConnection::Disconnect()
 
 void CMysqlConnection::Lock(const char *pTable)
 {
+#if defined(CONF_SQL)
 	char aBuf[512];
 	str_format(aBuf, sizeof(aBuf), "lock tables %s write;", pTable);
 	m_pStmt->execute(aBuf);
 	m_Locked = true;
+#endif
 }
 
 void CMysqlConnection::Unlock()
 {
+#if defined(CONF_SQL)
 	if(m_Locked)
 	{
 		m_pStmt->execute("unlock tables;");
 		m_Locked = false;
 	}
+#endif
 }
 
 void CMysqlConnection::PrepareStatement(const char *pStmt)
 {
+#if defined(CONF_SQL)
 	m_pPreparedStmt.reset(m_pConnection->prepareStatement(pStmt));
 	m_NewQuery = true;
+#endif
 }
 
 void CMysqlConnection::BindString(int Idx, const char *pString)
 {
+#if defined(CONF_SQL)
 	m_pPreparedStmt->setString(Idx, pString);
 	m_NewQuery = true;
+#endif
 }
 
 void CMysqlConnection::BindInt(int Idx, int Value)
 {
+#if defined(CONF_SQL)
 	m_pPreparedStmt->setInt(Idx, Value);
 	m_NewQuery = true;
+#endif
 }
 
 bool CMysqlConnection::Step()
 {
+#if defined(CONF_SQL)
 	if(m_NewQuery)
 	{
 		m_NewQuery = false;
 		m_pResults.reset(m_pPreparedStmt->executeQuery());
 	}
 	return m_pResults->next();
+#else
+	return false;
+#endif
 }
 
 bool CMysqlConnection::IsNull(int Col) const
 {
+#if defined(CONF_SQL)
 	return m_pResults->isNull(Col);
+#else
+	return false;
+#endif
 }
 
 float CMysqlConnection::GetFloat(int Col) const
 {
+#if defined(CONF_SQL)
 	return (float)m_pResults->getDouble(Col);
+#else
+	return 0.0;
+#endif
 }
 
 int CMysqlConnection::GetInt(int Col) const
 {
+#if defined(CONF_SQL)
 	return m_pResults->getInt(Col);
+#else
+	return 0;
+#endif
 }
 
 void CMysqlConnection::GetString(int Col, char *pBuffer, int BufferSize) const
 {
+#if defined(CONF_SQL)
 	auto String = m_pResults->getString(Col);
 	str_copy(pBuffer, String.c_str(), BufferSize);
+#endif
 }
 
 int CMysqlConnection::GetBlob(int Col, unsigned char *pBuffer, int BufferSize) const
 {
+#if defined(CONF_SQL)
 	auto Blob = m_pResults->getBlob(Col);
 	Blob->read((char *)pBuffer, BufferSize);
 	return Blob->gcount();
+#else
+	return 0;
+#endif
 }

@@ -149,11 +149,8 @@ void CDbConnectionPool::SqlWorker()
 		}
 		if(Success)
 			dbg_msg("sql", "%s done", pThreadData->m_pName);
-		else
-			dbg_msg("sql", "%s failed", pThreadData->m_pName);
 	}
 }
-
 
 bool CDbConnectionPool::ExecSqlFunc(IDbConnection *pConnection, CSqlExecData *pData, bool Failure)
 {
@@ -185,6 +182,8 @@ bool CDbConnectionPool::ExecSqlFunc(IDbConnection *pConnection, CSqlExecData *pD
 	}
 	pConnection->Unlock();
 	pConnection->Disconnect();
+	if(!Success)
+		dbg_msg("sql", "%s failed", pData->m_pName);
 	return Success;
 }
 
