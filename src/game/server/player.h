@@ -185,6 +185,7 @@ public:
 	int64_t m_LastBroadcast;
 	bool m_LastBroadcastImportance;
 
+	CNetObj_PlayerInput m_LastCharacterInput;
 	CNetObj_PlayerInput *m_pLastTarget;
 	bool m_LastTargetInit;
 	/* 

@@ -69,6 +69,7 @@ void CPlayer::Reset()
 	m_LastWhisperTo = -1;
 	m_LastSetSpectatorMode = 0;
 	m_aTimeoutCode[0] = '\0';
+	mem_zero(&m_LastCharacterInput, sizeof(m_LastCharacterInput));
 	delete m_pLastTarget;
 	m_pLastTarget = new CNetObj_PlayerInput({0});
 	m_LastTargetInit = false;
@@ -571,7 +572,10 @@ void CPlayer::OnPredictedEarlyInput(CNetObj_PlayerInput *NewInput)
 		return;
 
 	if(m_pCharacter && !m_Paused)
+	{
+		mem_copy(&m_LastCharacterInput, NewInput, sizeof(m_LastCharacterInput));
 		m_pCharacter->OnDirectInput(NewInput);
+	}
 }
 
 int CPlayer::GetClientVersion() const
@@ -609,7 +613,7 @@ void CPlayer::Respawn(bool WeakHook)
 CCharacter *CPlayer::ForceSpawn(vec2 Pos)
 {
 	m_Spawning = false;
-	m_pCharacter = new(m_ClientID) CCharacter(&GameServer()->m_World);
+	m_pCharacter = new(m_ClientID) CCharacter(&GameServer()->m_World, m_LastCharacterInput);
 	m_pCharacter->Spawn(this, Pos);
 	m_Team = 0;
 	return m_pCharacter;
@@ -697,7 +701,7 @@ void CPlayer::TryRespawn()
 
 	m_WeakHookSpawn = false;
 	m_Spawning = false;
-	m_pCharacter = new(m_ClientID) CCharacter(&GameServer()->m_World);
+	m_pCharacter = new(m_ClientID) CCharacter(&GameServer()->m_World, m_LastCharacterInput);
 	m_ViewPos = SpawnPos;
 	m_pCharacter->Spawn(this, SpawnPos);
 	GameServer()->CreatePlayerSpawn(SpawnPos, GameServer()->m_pController->GetMaskForPlayerWorldEvent(m_ClientID));
