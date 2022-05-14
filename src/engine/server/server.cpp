@@ -2599,6 +2599,19 @@ int CServer::Run()
 			int64_t t = time_get();
 			int NewTicks = 0;
 
+			// Temporary fix to not accidently close teehistorian files and disable teehistorian
+			// recording, when not actually loading a new map during server start.
+			// TODO: Fix the root cause, either that
+			//  * CServer::ConchainMapUpdate sometimes incorrectly sets m_MapReload on server
+			//    start or that
+			//  * if m_MapReload gets set incorrectly, teehistorian still gets reinitialized
+			//    again.
+			// See also: https://github.com/ddnet/ddnet/issues/5121
+			if(m_MapReload && str_comp(Config()->m_SvMap, m_aCurrentMap) == 0)
+			{
+				m_MapReload = false;
+			}
+
 			// load new map TODO: don't poll this
 			if(m_MapReload)
 			{
