@@ -1058,7 +1058,7 @@ void CGameContext::ConJoinTeam(IConsole::IResult *pResult, void *pUserData)
 			if(Team < 0 || Team >= MAX_CLIENTS)
 				Team = pController->m_Teams.GetFirstEmptyTeam();
 
-			if(pPlayer->m_Last_Team + (int64_t)pSelf->Server()->TickSpeed() * g_Config.m_SvTeamChangeDelay > pSelf->Server()->Tick())
+			if(pPlayer->m_Last_Team != 0 && pPlayer->m_Last_Team + (int64_t)pSelf->Server()->TickSpeed() * g_Config.m_SvTeamChangeDelay > pSelf->Server()->Tick())
 			{
 				pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "chatresp",
 					"You can\'t change teams that fast!");
