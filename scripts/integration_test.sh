@@ -220,7 +220,7 @@ $tool ../DDNet \
 wait_for_launch client2.fifo 5
 
 # wait for tees to finish
-sleep 10
+sleep 15
 
 echo "[*] Test chat and chat commands"
 echo "say hello world" > client1.fifo
