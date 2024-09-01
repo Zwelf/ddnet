@@ -19,7 +19,8 @@ IGNORE_FILES = [
 ]
 IGNORE_DIRS = [
 	"src/game/generated",
-	"src/rust-bridge"
+	"src/rust-bridge",
+    "src/engine/server/db",
 ]
 def filter_ignored(filenames):
 	result = []

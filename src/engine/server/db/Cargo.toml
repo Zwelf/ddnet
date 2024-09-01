@@ -1,0 +1,12 @@
+[package]
+name = "ddnet-db"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# C++ bindings for DDNet
+cxx = "1.0"
+
+# Supported database backends
+rusqlite = "0.32.1"
+mysql = "25.0.1"
