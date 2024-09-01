@@ -847,6 +847,14 @@ set_glob(RUST_ENGINE_INTERFACE GLOB "rs;toml" src/engine
   lib.rs
 )
 
+set_glob(RUST_ENGINE_SERVER_DB GLOB_RECURSE "rs;toml" src/engine/server/db
+  Cargo.toml
+  lib.rs
+  mysql.rs
+  sqlite.rs
+  worker.rs
+)
+
 set_glob(RUST_ENGINE_SHARED GLOB_RECURSE "rs;toml" src/engine/shared
   Cargo.toml
   build.rs
@@ -930,6 +938,7 @@ endif()
 set(RUST_SRC
       ${RUST_BASE}
       ${RUST_ENGINE_INTERFACE}
+      ${RUST_ENGINE_SERVER_DB}
       ${RUST_ENGINE_SHARED}
       Cargo.toml
       Cargo.lock

@@ -1,7 +1,11 @@
 [package]
 name = "ddnet-db"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
+license = "Zlib"
+
+[lib]
+path = "lib.rs"
 
 [dependencies]
 # C++ bindings for DDNet
