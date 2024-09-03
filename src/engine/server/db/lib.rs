@@ -37,6 +37,7 @@ enum Request {
     SetMysql(MysqlConfig),
     RemoveMysql,
     GetDatabases,
+
     // Testing messages
     #[cfg(test)]
     SqliteDump,
@@ -129,13 +130,51 @@ impl DbPool {
         self.last_response.clone()
     }
 
+    // DDNet database interactions
+    // void LoadBestTime();
+    // void MapInfo(int ClientId, const char *pMapName);
+    // void MapVote(int ClientId, const char *pMapName);
+    // void LoadPlayerData(int ClientId, const char *pName = "");
+    // void LoadPlayerTimeCp(int ClientId, const char *pName = "");
+    // void SaveScore(int ClientId, int TimeTicks, const char *pTimestamp, const float aTimeCp[NUM_CHECKPOINTS], bool NotEligible);
+
+    // void SaveTeamScore(int Team, int *pClientIds, unsigned int Size, int TimeTicks, const char *pTimestamp);
+
+    // void ShowTop(int ClientId, int Offset = 1);
+    // void ShowRank(int ClientId, const char *pName);
+
+    // void ShowTeamTop5(int ClientId, int Offset = 1);
+    // void ShowPlayerTeamTop5(int ClientId, const char *pName, int Offset = 1);
+    // void ShowTeamRank(int ClientId, const char *pName);
+
+    // void ShowTopPoints(int ClientId, int Offset = 1);
+    // void ShowPoints(int ClientId, const char *pName);
+
+    // void ShowTimes(int ClientId, const char *pName, int Offset = 1);
+    // void ShowTimes(int ClientId, int Offset = 1);
+
+    // void RandomMap(int ClientId, int Stars);
+    // void RandomUnfinishedMap(int ClientId, int Stars);
+    /// Returns either a ResultMap if possible or a `ResultDirectMessage`
+    fn query_random_map(&mut self, player_uid: u64, category: String, stars: i32) {}
+    fn query_random_unfinished_map(
+        &mut self,
+        player_uid: u64,
+        player_name: String,
+        category: String,
+        stars: i32,
+    ) {
+    }
+
+    // void SaveTeam(int ClientId, const char *pCode, const char *pServer);
+
+    // void LoadTeam(const char *pCode, int ClientId);
+    // void GetSaves(int ClientId);
+
     fn result_map(&self) -> ResultMap {
         todo!()
     }
     // Some results contain additional data
-
-    /// Initiating new database queries
-    fn query_random_map(&mut self) {}
 }
 
 #[cxx::bridge]
@@ -150,7 +189,31 @@ mod ffi {
         RandomMap,
     }
     struct ResultMap {
+        pub player_uid: u64,
         pub map_name: [u8; 64],
+    }
+    struct ResultDirectMessage {
+        pub player_uid: u64,
+        pub msg: String,
+    }
+    struct ResultTeamMessage {
+        pub team: i32,
+        pub msg: String,
+    }
+    struct ResultAllMessage {
+        /// attach `player_uid` for rate limiting
+        pub player_uid: i32,
+        pub msg: String,
+    }
+    struct ResultBroacast {
+        pub msg: String,
+    }
+    struct ResultPlayerInfo {
+        pub player_uid: i32,
+        /// score is attached to player name. Discard results if changed
+        pub name: String,
+        pub time_cp: [f32; 25],
+        pub birthday: bool,
     }
     extern "Rust" {
         type DbPool;
@@ -163,7 +226,7 @@ mod ffi {
         fn worker_set_sqlite(&mut self, path: String);
 
         // Interface for Database
-        fn query_random_map(&mut self);
+        fn query_random_map(&mut self, player_uid: u64, category: String, stars: i32);
 
         fn get_next_result(&mut self) -> ScoreResult;
 
