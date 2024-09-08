@@ -868,6 +868,8 @@ set_src(RUST_BRIDGE_SHARED GLOB_RECURSE src/rust-bridge
   cpp/console.h
   engine/shared/rust_version.cpp
   engine/shared/rust_version.h
+  engine/server/db.cpp
+  engine/server/db.h
 )
 
 set_glob(RUST_MASTERSRV GLOB "rs;toml" src/mastersrv/src
