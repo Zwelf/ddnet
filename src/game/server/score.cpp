@@ -11,6 +11,7 @@
 #include <engine/shared/linereader.h>
 #include <engine/storage.h>
 #include <game/generated/wordlist.h>
+#include <engine/server/db.h>
 
 #include <memory>
 

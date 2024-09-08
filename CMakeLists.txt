@@ -847,7 +847,7 @@ set_glob(RUST_ENGINE_INTERFACE GLOB "rs;toml" src/engine
   lib.rs
 )
 
-set_glob(RUST_ENGINE_SERVER_DB GLOB_RECURSE "rs;toml" src/engine/server/db
+set_glob(RUST_ENGINE_SERVER_DB GLOB_RECURSE "rs;toml" src/engine/server
   Cargo.toml
   lib.rs
   mysql.rs

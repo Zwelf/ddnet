@@ -2,7 +2,7 @@
 members = [
   "src/base",
   "src/engine",
-  "src/engine/server/db",
+  "src/engine/server",
   "src/engine/shared",
   "src/rust-bridge/test",
 ]

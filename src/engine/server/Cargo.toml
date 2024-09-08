@@ -1,5 +1,5 @@
 [package]
-name = "ddnet-db"
+name = "engine"
 version = "0.0.1"
 edition = "2021"
 license = "Zlib"
