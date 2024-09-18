@@ -863,13 +863,16 @@ set_glob(RUST_ENGINE_SHARED GLOB_RECURSE "rs;toml" src/engine/shared
   rust_version.rs
 )
 
+set_src(RUST_BRIDGE_SERVER GLOB_RECURSE src/rust-bridge
+  engine/server/db.cpp
+  engine/server/db.h
+)
+
 set_src(RUST_BRIDGE_SHARED GLOB_RECURSE src/rust-bridge
   cpp/console.cpp
   cpp/console.h
   engine/shared/rust_version.cpp
   engine/shared/rust_version.h
-  engine/server/db.cpp
-  engine/server/db.h
 )
 
 set_glob(RUST_MASTERSRV GLOB "rs;toml" src/mastersrv/src
@@ -878,8 +881,9 @@ set_glob(RUST_MASTERSRV GLOB "rs;toml" src/mastersrv/src
   main.rs
 )
 
+add_library(rust-bridge-server EXCLUDE_FROM_ALL OBJECT ${RUST_BRIDGE_SERVER})
 add_library(rust-bridge-shared EXCLUDE_FROM_ALL OBJECT ${RUST_BRIDGE_SHARED})
-list(APPEND TARGETS_OWN rust-bridge-shared)
+list(APPEND TARGETS_OWN rust-bridge-server rust-bridge-shared)
 
 if(TARGET_OS STREQUAL "android")
   set(CARGO_BUILD_DIR "${CARGO_NDK_TARGET}/")
@@ -2785,6 +2789,7 @@ if(SERVER)
     ${MINIUPNPC_LIBRARIES}
     ${MYSQL_LIBRARIES}
     ${TARGET_ANTIBOT}
+    rust_engine_server
     rust_engine_shared
 
     ${LIBS}
@@ -2797,6 +2802,7 @@ if(SERVER)
     ${SERVER_ICON}
     $<TARGET_OBJECTS:engine-shared>
     $<TARGET_OBJECTS:game-shared>
+    $<TARGET_OBJECTS:rust-bridge-server>
     $<TARGET_OBJECTS:rust-bridge-shared>
   )
   set_property(TARGET game-server

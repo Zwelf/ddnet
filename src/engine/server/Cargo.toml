@@ -14,4 +14,4 @@ cxx = "1.0"
 
 # Supported database backends
 rusqlite = "0.32.1"
-mysql = "25.0.1"
+mysql = { version = "25.0.1", features = ["minimal"], default-features = false }
